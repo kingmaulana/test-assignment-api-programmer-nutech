@@ -8,7 +8,9 @@ const query = `
                 first_name VARCHAR NOT NULL,
                 last_name VARCHAR NOT NULL,
                 email VARCHAR NOT NULL UNIQUE,
-                password VARCHAR NOT NULL
+                password VARCHAR NOT NULL,
+                balance NUMERIC DEFAULT 0,
+                profile_image VARCHAR
             );`;
 
 (async() => {
