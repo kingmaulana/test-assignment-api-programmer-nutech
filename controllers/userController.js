@@ -1,5 +1,6 @@
 const pool = require('../db/connection');
-const { hashPassword } = require('../helpers/bcrypt');
+const { hashPassword, comparePassword } = require('../helpers/bcrypt');
+const { signToken } = require('../helpers/jwt');
 
 class UserController {
     static async registration(req, res) {
@@ -61,6 +62,38 @@ class UserController {
                     data: null
                 });
             }
+
+            const query = `SELECT * FROM "Users" WHERE email = '${email}'`;
+            const result = await pool.query(query);
+
+            if (result.rows.length === 0) {
+                return res.status(401).json({
+                    status: 103,
+                    message: "Username atau password salah",
+                    data: null
+                });
+            }
+            
+            const user = result.rows[0];
+            console.log("🚀 ~ UserController ~ login ~ user:", user.email)
+            const isPasswordValid = comparePassword(password, user.password);
+            if (!isPasswordValid) {
+                return res.status(401).json({
+                    status: 103,
+                    message: "Username atau password salah",
+                    data: null
+                });
+            }
+
+            const access_token = signToken( user.email )
+
+            return res.status(200).json({
+                status: 0,
+                message: "Login Sukses",
+                data: {
+                    token: access_token
+                }
+            });
 
         } catch (error) {
             console.log("🚀 ~ UserController ~ login ~ error:", error)
