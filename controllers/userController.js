@@ -99,6 +99,24 @@ class UserController {
             console.log("🚀 ~ UserController ~ login ~ error:", error)
         }
     }
+
+    static async getProfile(req, res, next) {
+        try {
+            return res.status(200).json({
+                status: 0,
+                message: "Sukses",
+                data: {
+                    email: req.user.email,
+                    first_name: req.user.first_name,
+                    last_name: req.user.last_name,
+                    profile_image: req.user.profile_image
+                }
+            });
+            
+        } catch (error) {
+            console.log("🚀 ~ UserController ~ getProfile ~ error:", error)
+        }
+    }
 }
 
 module.exports = UserController;
