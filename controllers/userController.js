@@ -149,6 +149,37 @@ class UserController {
             console.log("🚀 ~ UserController ~ updateProfile ~ error:", error)
         }
     }
+
+    static async updateImage(req, res, next) {
+        try {
+            console.log("🚀 ~ UserController ~ updateImage ~ req:", req)
+            if(!req.file) {
+                return res.status(400).json({
+                    status: 102,
+                    message: "Gambar tidak ditemukan",
+                    data: null
+                });
+            }
+
+            const imageUrl = req.file.path;
+
+            const query = `UPDATE "Users" SET profile_image = '${imageUrl}' WHERE email = '${req.user.email}'`;
+            const result = await pool.query(query);
+
+            return res.status(200).json({
+                status: 0,
+                message: "Update Profile Image berhasil",
+                data: {
+                    email: req.user.email,
+                    first_name: req.user.first_name,
+                    last_name: req.user.last_name,
+                    profile_image: imageUrl
+                }
+            })
+        } catch (error) {
+            console.log("🚀 ~ UserController ~ updateImage ~ error:", error)
+        }
+    }
 }
 
 module.exports = UserController;
