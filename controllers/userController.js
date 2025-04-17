@@ -152,7 +152,7 @@ class UserController {
 
     static async updateImage(req, res, next) {
         try {
-            console.log("🚀 ~ UserController ~ updateImage ~ req:", req)
+            // console.log("🚀 ~ UserController ~ updateImage ~ req:", req)
             if(!req.file) {
                 return res.status(400).json({
                     status: 102,

@@ -9,8 +9,6 @@ class User {
         this.balance = balance;
         this.profile_image = profile_image;
     }
-
-
 }
 
 module.exports = User;

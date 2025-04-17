@@ -1,6 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const UserController = require('../controllers/userController')
+const BannerController = require('../controllers/bannerController')
 const authentication = require('../middlewares/authentication')
 const upload = require('../helpers/multer')
 
@@ -10,6 +11,8 @@ router.get('/', (req, res) => {
 
 router.post('/registration', UserController.registration);
 router.post('/login', UserController.login);
+router.get('/banner', BannerController.getBanners)
+router.get('/services', BannerController.getServices)
 
 router.use(authentication)
 router.get('/profile', UserController.getProfile);
