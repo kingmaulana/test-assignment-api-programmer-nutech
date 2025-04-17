@@ -13,4 +13,6 @@ router.post('/login', UserController.login);
 router.use(authentication)
 router.get('/profile', UserController.getProfile);
 
+router.put('/profile/update', UserController.updateProfile);
+
 module.exports = router

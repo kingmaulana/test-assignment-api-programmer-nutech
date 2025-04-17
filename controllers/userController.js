@@ -117,6 +117,38 @@ class UserController {
             console.log("🚀 ~ UserController ~ getProfile ~ error:", error)
         }
     }
+
+    static async updateProfile(req, res, next) {
+        try {
+            const {first_name, last_name} = req.body;
+
+            const query = `UPDATE "Users" SET first_name = '${first_name}', last_name = '${last_name}' WHERE email = '${req.user.email}'`;
+            const result = await pool.query(query);
+
+            if(result.rowCount === 0) {
+                return res.status(404).json({
+                    status: 104,
+                    message: "User tidak ditemukan",
+                    data: null
+                });
+            }
+
+            return res.status(200).json({
+                status: 0,
+                message: "Update Profile berhasil",
+                data: {
+                    email: req.user.email,
+                    first_name: first_name,
+                    last_name: last_name,
+                    profile_image: req.user.profile_image
+                }
+            });
+            
+
+        } catch (error) {
+            console.log("🚀 ~ UserController ~ updateProfile ~ error:", error)
+        }
+    }
 }
 
 module.exports = UserController;
