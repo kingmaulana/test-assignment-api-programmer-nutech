@@ -22,4 +22,7 @@ router.put('/profile/update', UserController.updateProfile);
 router.put('/profile/image', upload.single('image'), UserController.updateImage);
 router.get('/balance', TransactionController.getBalance);
 
+router.post('/topup', TransactionController.topUp);
+router.post('/transaction', TransactionController.createTransaction);
+
 module.exports = router

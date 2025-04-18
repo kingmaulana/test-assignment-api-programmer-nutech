@@ -29,6 +29,18 @@ const query = `
                 service_icon VARCHAR NOT NULL,
                 service_tariff NUMERIC NOT NULL
             );
+
+            DROP TABLE IF EXISTS "Transactions";
+            CREATE TABLE "Transactions" (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES "Users" (id) ON DELETE CASCADE,
+                invoice_number VARCHAR NOT NULL UNIQUE,
+                service_code VARCHAR REFERENCES "Services" (service_code) ON DELETE CASCADE,
+                service_name VARCHAR REFERENCES "Services" (service_name) ON DELETE CASCADE,
+                transaction_type VARCHAR NOT NULL,
+                total_amount NUMERIC NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
             `;
 
 (async() => {

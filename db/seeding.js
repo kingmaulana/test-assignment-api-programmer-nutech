@@ -4,6 +4,10 @@ const fs = require('fs').promises;
 async function seeding() {
     
     try {
+        const readUser = JSON.parse(await fs.readFile('./data/user.json', 'utf-8')).map((el) => {
+            return `('${el.first_name}', '${el.last_name}', '${el.email}', '${el.password}')`
+        }).join(',\n');
+
         const readBanner = JSON.parse(await fs.readFile('./data/banner.json', 'utf-8')).map((el) => {
             return `('${el.banner_name}', '${el.banner_image}', '${el.description}')`
         }).join(',\n');
