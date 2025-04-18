@@ -57,7 +57,47 @@ class TransactionController {
 
     static async createTransaction(req, res) {
         try {
-            
+            const { service_code } = req.body;
+
+            const serviceQuery = `SELECT * FROM "Services" WHERE service_code = '${service_code}'`;
+            const serviceResult = await pool.query(serviceQuery);
+            const tarifResult = serviceResult.rows[0].service_tariff;
+            // console.log("🚀 ~ TransactionController ~ createTransaction ~ tarifResult:", tarifResult)
+
+            //cek balance pada user
+            const userQuery = `SELECT * FROM "Users" WHERE email = '${req.user.email}'`;
+            const userResult = await pool.query(userQuery)
+            // console.log("🚀 ~ TransactionController ~ createTransaction ~ user:", userResult)
+            const userBalance = userResult.rows[0].balance;
+            // console.log("🚀 ~ TransactionController ~ createTransaction ~ amountUser:", userBalance)
+            if(userBalance => tarifResult) {
+
+                const updateBalanceQuery = `UPDATE "Users" SET balance = balance - ${tarifResult} WHERE id = ${req.user.id} RETURNING *`
+                const resultBalance = await pool.query(updateBalanceQuery);
+
+                const invoiceNumber = `INV-${Date.now()}`;
+                const serviceCode = serviceResult.rows[0].service_code;
+                const serviceName = serviceResult.rows[0].service_name;
+                const totalAmount = serviceResult.rows[0].service_tariff;
+
+                const writeTransactionQuery = `INSERT INTO "Transactions" (user_id, invoice_number, service_code, service_name, transaction_type, total_amount) VALUES (${req.user.id}, '${invoiceNumber}', '${serviceCode}', '${serviceName}' ,'PAYMENT', ${totalAmount}) RETURNING *`
+
+                const resultTransaction = await pool.query(writeTransactionQuery)
+
+                return res.status(200).json({
+                    status: 0,
+                    message: "Transaksi berhasil",
+                    data: {
+                        invoice_number: invoiceNumber,
+                        service_code: serviceCode,
+                        service_name: serviceName,
+                        transaction_type: "PAYMENT",
+                        total_amount: totalAmount,
+                        created_on: `${Date.now()}`
+                    }
+                })
+            } 
+
         } catch (error) {
             console.log("🚀 ~ TransactionController ~ createTransaction ~ error:", error)
         }
