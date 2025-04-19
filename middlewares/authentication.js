@@ -1,5 +1,5 @@
 const { verifyToken } = require("../helpers/jwt")
-const pool = require('../db/connection');
+const { pool } = require('../db/connection');
 
 async function authentication(req, res, next) {
     try {

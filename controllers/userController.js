@@ -1,4 +1,4 @@
-const pool = require('../db/connection');
+const { pool } = require('../db/connection');
 const { hashPassword, comparePassword } = require('../helpers/bcrypt');
 const { signToken } = require('../helpers/jwt');
 
