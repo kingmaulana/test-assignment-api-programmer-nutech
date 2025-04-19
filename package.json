@@ -5,10 +5,11 @@
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node app.js"
+    "start": "node app.js",
+    "migrate": "node db/migrate.js",
+    "deploy": "npm run migrate && npm start",
+    "railway:deploy": "railway up && npm run migrate"
   },
-  "repository": {
-    "type": "git",
     "url": "git+https://github.com/kingmaulana/test-assignment-api-programmer-nutech.git"
   },
   "keywords": [],
