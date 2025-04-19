@@ -154,7 +154,7 @@ class UserController {
 
     static async updateImage(req, res, next) {
         try {
-            if(!req.file) {
+            if (!req.file) {
                 return res.status(400).json({
                     status: 102,
                     message: "Gambar tidak ditemukan",
@@ -162,24 +162,61 @@ class UserController {
                 });
             }
 
-            const imageUrl = req.file.path;
+            // Get file details
+            const { buffer, mimetype, originalname } = req.file;
 
-            const query = `UPDATE "Users" SET profile_image = $1 WHERE email = $2`;
-            const values = [imageUrl, req.user.email];
-            const result = await pool.query(query, values);
+            // Check file size (max 5MB)
+            if (buffer.length > 5 * 1024 * 1024) {
+                return res.status(400).json({
+                    status: 102,
+                    message: "Ukuran gambar terlalu besar (maksimal 5MB)",
+                    data: null
+                });
+            }
 
-            return res.status(200).json({
-                status: 0,
-                message: "Update Profile Image berhasil",
-                data: {
-                    email: req.user.email,
-                    first_name: req.user.first_name,
-                    last_name: req.user.last_name,
-                    profile_image: imageUrl
+            // Convert to base64
+            const base64Image = buffer.toString('base64');
+            const imageUrl = `data:${mimetype};base64,${base64Image}`;
+
+            try {
+                const query = `UPDATE "Users" SET profile_image = $1 WHERE email = $2 RETURNING *`;
+                const values = [imageUrl, req.user.email];
+                const result = await pool.query(query, values);
+
+                if (result.rowCount === 0) {
+                    return res.status(404).json({
+                        status: 104,
+                        message: "User tidak ditemukan",
+                        data: null
+                    });
                 }
-            })
+
+                const updatedUser = result.rows[0];
+                return res.status(200).json({
+                    status: 0,
+                    message: "Update Profile Image berhasil",
+                    data: {
+                        email: updatedUser.email,
+                        first_name: updatedUser.first_name,
+                        last_name: updatedUser.last_name,
+                        profile_image: imageUrl
+                    }
+                });
+            } catch (dbError) {
+                console.error("Database error:", dbError);
+                return res.status(500).json({
+                    status: 500,
+                    message: "Gagal menyimpan gambar",
+                    data: null
+                });
+            }
         } catch (error) {
-            console.log("🚀 ~ UserController ~ updateImage ~ error:", error)
+            console.error("🚀 ~ UserController ~ updateImage ~ error:", error);
+            return res.status(500).json({
+                status: 500,
+                message: "Internal server error",
+                data: null
+            });
         }
     }
 }
