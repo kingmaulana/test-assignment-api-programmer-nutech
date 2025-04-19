@@ -7,11 +7,11 @@ app.use(express.urlencoded({ extended: false }))
 app.use(express.json())
 app.use(router)
 
-// Specify a port
-const port = 3000; // You can choose any port number you like, like 3000, 8080, etc.
+// Use environment port or fallback to 3000
+const PORT = process.env.PORT || 3000;
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`)
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`)
 })
 
 module.exports = app
