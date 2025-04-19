@@ -27,10 +27,10 @@ class UserController {
 
             const encryptedPassword = hashPassword(password); 
 
-            const query = `INSERT INTO "Users" (first_name, last_name, email, password
-            ) VALUES ('${first_name}', '${last_name}', '${email}', '${encryptedPassword}')`;
+            const query = `INSERT INTO "Users" (first_name, last_name, email, password) VALUES ($1, $2, $3, $4)`;
+            const values = [first_name, last_name, email, encryptedPassword];
 
-            await pool.query(query);
+            await pool.query(query, values);
 
             return res.status(200).json({
                 status: 0,
@@ -63,8 +63,9 @@ class UserController {
                 });
             }
 
-            const query = `SELECT * FROM "Users" WHERE email = '${email}'`;
-            const result = await pool.query(query);
+            const query = `SELECT * FROM "Users" WHERE email = $1`;
+            const values = [email];
+            const result = await pool.query(query, values);
 
             if (result.rows.length === 0) {
                 return res.status(401).json({
@@ -85,7 +86,7 @@ class UserController {
                 });
             }
 
-            const access_token = signToken( user.email )
+            const access_token = signToken(user.email)
 
             return res.status(200).json({
                 status: 0,
@@ -122,8 +123,9 @@ class UserController {
         try {
             const {first_name, last_name} = req.body;
 
-            const query = `UPDATE "Users" SET first_name = '${first_name}', last_name = '${last_name}' WHERE email = '${req.user.email}'`;
-            const result = await pool.query(query);
+            const query = `UPDATE "Users" SET first_name = $1, last_name = $2 WHERE email = $3`;
+            const values = [first_name, last_name, req.user.email];
+            const result = await pool.query(query, values);
 
             if(result.rowCount === 0) {
                 return res.status(404).json({
@@ -152,7 +154,6 @@ class UserController {
 
     static async updateImage(req, res, next) {
         try {
-            // console.log("🚀 ~ UserController ~ updateImage ~ req:", req)
             if(!req.file) {
                 return res.status(400).json({
                     status: 102,
@@ -163,8 +164,9 @@ class UserController {
 
             const imageUrl = req.file.path;
 
-            const query = `UPDATE "Users" SET profile_image = '${imageUrl}' WHERE email = '${req.user.email}'`;
-            const result = await pool.query(query);
+            const query = `UPDATE "Users" SET profile_image = $1 WHERE email = $2`;
+            const values = [imageUrl, req.user.email];
+            const result = await pool.query(query, values);
 
             return res.status(200).json({
                 status: 0,

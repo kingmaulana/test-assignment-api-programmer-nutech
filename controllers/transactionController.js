@@ -18,7 +18,6 @@ class TransactionController {
 
     static async topUp(req, res, next) {
         try {
-            // console.log(res.user)
             const { top_up_amount } = req.body;
 
             if (!top_up_amount || top_up_amount <= 0 || isNaN(top_up_amount)) {
@@ -32,14 +31,14 @@ class TransactionController {
             const invoice_number = `INV-${Date.now()}`;
             const transaction_type = "TOPUP";
             
-            const addBalanceQuery = `UPDATE "Users" SET balance = balance + ${top_up_amount} WHERE id = ${req.user.id} RETURNING *`;
-            const addBalanceResult = await pool.query(addBalanceQuery);
+            const addBalanceQuery = `UPDATE "Users" SET balance = balance + $1 WHERE id = $2 RETURNING *`;
+            const addBalanceValues = [top_up_amount, req.user.id];
+            const addBalanceResult = await pool.query(addBalanceQuery, addBalanceValues);
             const latestBalance = addBalanceResult.rows[0].balance;
             
-            //make transaction log
-            const logTopUpQuery = `INSERT INTO "Transactions" (user_id, invoice_number, transaction_type, total_amount) VALUES (${req.user.id}, '${invoice_number}', '${transaction_type}', ${top_up_amount}) RETURNING *`;
-
-            const logTopUpResult = await pool.query(logTopUpQuery);
+            const logTopUpQuery = `INSERT INTO "Transactions" (user_id, invoice_number, transaction_type, total_amount) VALUES ($1, $2, $3, $4) RETURNING *`;
+            const logTopUpValues = [req.user.id, invoice_number, transaction_type, top_up_amount];
+            const logTopUpResult = await pool.query(logTopUpQuery, logTopUpValues);
 
             return res.status(200).json({
                 status: 0,
@@ -48,7 +47,6 @@ class TransactionController {
                     balance: latestBalance,
                 }
             })
-
 
         } catch (error) {
             console.log("🚀 ~ TransactionController ~ topUp ~ error:", error)
@@ -59,30 +57,27 @@ class TransactionController {
         try {
             const { service_code } = req.body;
 
-            const serviceQuery = `SELECT * FROM "Services" WHERE service_code = '${service_code}'`;
-            const serviceResult = await pool.query(serviceQuery);
-            const tarifResult = serviceResult.rows[0].service_tariff;
-            // console.log("🚀 ~ TransactionController ~ createTransaction ~ tarifResult:", tarifResult)
+            const serviceQuery = `SELECT * FROM "Services" WHERE service_code = $1`;
+            const serviceResult = await pool.query(serviceQuery, [service_code]);
+            const service = serviceResult.rows[0];
+            const tarifResult = service.service_tariff;
 
-            //cek balance pada user
-            const userQuery = `SELECT * FROM "Users" WHERE email = '${req.user.email}'`;
-            const userResult = await pool.query(userQuery)
-            // console.log("🚀 ~ TransactionController ~ createTransaction ~ user:", userResult)
+            const userQuery = `SELECT * FROM "Users" WHERE email = $1`;
+            const userResult = await pool.query(userQuery, [req.user.email]);
             const userBalance = userResult.rows[0].balance;
-            // console.log("🚀 ~ TransactionController ~ createTransaction ~ amountUser:", userBalance)
-            if(userBalance => tarifResult) {
 
-                const updateBalanceQuery = `UPDATE "Users" SET balance = balance - ${tarifResult} WHERE id = ${req.user.id} RETURNING *`
-                const resultBalance = await pool.query(updateBalanceQuery);
+            if(userBalance >= tarifResult) {
+                const updateBalanceQuery = `UPDATE "Users" SET balance = balance - $1 WHERE id = $2 RETURNING *`;
+                const resultBalance = await pool.query(updateBalanceQuery, [tarifResult, req.user.id]);
 
                 const invoiceNumber = `INV-${Date.now()}`;
-                const serviceCode = serviceResult.rows[0].service_code;
-                const serviceName = serviceResult.rows[0].service_name;
-                const totalAmount = serviceResult.rows[0].service_tariff;
+                const serviceCode = service.service_code;
+                const serviceName = service.service_name;
+                const totalAmount = service.service_tariff;
 
-                const writeTransactionQuery = `INSERT INTO "Transactions" (user_id, invoice_number, service_code, service_name, transaction_type, total_amount) VALUES (${req.user.id}, '${invoiceNumber}', '${serviceCode}', '${serviceName}' ,'PAYMENT', ${totalAmount}) RETURNING *`
-
-                const resultTransaction = await pool.query(writeTransactionQuery)
+                const writeTransactionQuery = `INSERT INTO "Transactions" (user_id, invoice_number, service_code, service_name, transaction_type, total_amount) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`;
+                const writeTransactionValues = [req.user.id, invoiceNumber, serviceCode, serviceName, 'PAYMENT', totalAmount];
+                const resultTransaction = await pool.query(writeTransactionQuery, writeTransactionValues);
 
                 return res.status(200).json({
                     status: 0,
@@ -96,7 +91,7 @@ class TransactionController {
                         created_on: `${Date.now()}`
                     }
                 })
-            } 
+            }
 
         } catch (error) {
             console.log("🚀 ~ TransactionController ~ createTransaction ~ error:", error)
@@ -108,19 +103,22 @@ class TransactionController {
             const userId = req.user.id;
             const limit = parseInt(req.query.limit);
             const offset = parseInt(req.query.offset) || 0;
-    
+
             let getTransactionQuery = `SELECT invoice_number, transaction_type, total_amount, created_at
                                        FROM "Transactions" 
-                                       WHERE user_id = ${userId} 
+                                       WHERE user_id = $1 
                                        ORDER BY created_at DESC`;
-    
+
+            const values = [userId];
+
             if (!isNaN(limit)) {
-                getTransactionQuery += ` LIMIT ${limit} OFFSET ${offset}`;
+                getTransactionQuery += ` LIMIT $2 OFFSET $3`;
+                values.push(limit, offset);
             }
-    
-            const transactionResult = await pool.query(getTransactionQuery);
+
+            const transactionResult = await pool.query(getTransactionQuery, values);
             console.log("🚀 ~ TransactionController ~ transactionHistory ~ transactionResult:", transactionResult.rows)
-    
+
             res.status(200).json({
                 status: 0,
                 message: "Get History Berhasil",
@@ -138,7 +136,7 @@ class TransactionController {
             });
         }
     }
-    
+
 }
 
 module.exports = TransactionController;
