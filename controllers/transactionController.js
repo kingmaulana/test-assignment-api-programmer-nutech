@@ -2,7 +2,7 @@ const pool = require('../db/connection');
 
 class TransactionController {
 
-    static async getBalance(req, res) {
+    static async getBalance(req, res, next) {
         try {
             return res.status(200).json({
                 status: 0,
@@ -16,7 +16,7 @@ class TransactionController {
         }
     }
 
-    static async topUp(req, res) {
+    static async topUp(req, res, next) {
         try {
             // console.log(res.user)
             const { top_up_amount } = req.body;
@@ -55,7 +55,7 @@ class TransactionController {
         }
     }
 
-    static async createTransaction(req, res) {
+    static async createTransaction(req, res, next) {
         try {
             const { service_code } = req.body;
 
@@ -102,6 +102,43 @@ class TransactionController {
             console.log("🚀 ~ TransactionController ~ createTransaction ~ error:", error)
         }
     }
+
+    static async transactionHistory(req, res, next) {
+        try {
+            const userId = req.user.id;
+            const limit = parseInt(req.query.limit);
+            const offset = parseInt(req.query.offset) || 0;
+    
+            let getTransactionQuery = `SELECT invoice_number, transaction_type, total_amount, created_at
+                                       FROM "Transactions" 
+                                       WHERE user_id = ${userId} 
+                                       ORDER BY created_at DESC`;
+    
+            if (!isNaN(limit)) {
+                getTransactionQuery += ` LIMIT ${limit} OFFSET ${offset}`;
+            }
+    
+            const transactionResult = await pool.query(getTransactionQuery);
+            console.log("🚀 ~ TransactionController ~ transactionHistory ~ transactionResult:", transactionResult.rows)
+    
+            res.status(200).json({
+                status: 0,
+                message: "Get History Berhasil",
+                data: {
+                    offset: offset,
+                    limit: isNaN(limit) ? null : limit,
+                    records: transactionResult.rows
+                }
+            });
+        } catch (error) {
+            console.log("🚀 ~ TransactionController ~ transactionHistory ~ error:", error);
+            res.status(500).json({
+                status: 1,
+                message: "Terjadi kesalahan saat mengambil riwayat transaksi"
+            });
+        }
+    }
+    
 }
 
 module.exports = TransactionController;

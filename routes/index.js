@@ -25,4 +25,6 @@ router.get('/balance', TransactionController.getBalance);
 router.post('/topup', TransactionController.topUp);
 router.post('/transaction', TransactionController.createTransaction);
 
+router.get('/transaction/history', TransactionController.transactionHistory);
+
 module.exports = router
