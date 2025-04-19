@@ -1,81 +1,103 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
+// Log environment for debugging
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('Database URL exists:', !!process.env.DATABASE_URL);
+
 let pool;
 
-const initializePool = () => {
+const createPool = () => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const connectionConfig = process.env.DATABASE_URL ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: {
+            rejectUnauthorized: false // Required for Railway PostgreSQL
+        }
+    } : {
+        user: process.env.DB_USER || 'postgres',
+        password: process.env.DB_PASSWORD || '123',
+        host: process.env.DB_HOST || 'localhost',
+        port: process.env.DB_PORT || 5432,
+        database: process.env.DB_NAME || 'test_nutech'
+    };
+
+    return new Pool({
+        ...connectionConfig,
+        max: isProduction ? 20 : 10,
+        idleTimeoutMillis: isProduction ? 30000 : 5000,
+        connectionTimeoutMillis: isProduction ? 5000 : 2000,
+        maxUses: isProduction ? 7500 : 1000,
+        application_name: 'nutech_api' // For identifying connection in PostgreSQL logs
+    });
+};
+
+const initializePool = async () => {
     try {
-        // Check if we have a DATABASE_URL (provided by Railway)
-        if (process.env.DATABASE_URL) {
-            console.log('Connecting to Railway PostgreSQL...');
-            pool = new Pool({
-                connectionString: process.env.DATABASE_URL,
-                ssl: {
-                    rejectUnauthorized: false // Required for Railway PostgreSQL
-                },
-                // Connection pool settings
-                max: 20, // Maximum number of clients in the pool
-                idleTimeoutMillis: 30000, // How long a client is allowed to remain idle before being closed
-                connectionTimeoutMillis: 5000, // How long to wait before timing out when connecting a new client
-                maxUses: 7500, // Close & replace a client after it has been used this many times
-            });
-        } else {
-            console.log('Connecting to local PostgreSQL...');
-            // Local development configuration
-            pool = new Pool({
-                user: process.env.DB_USER || 'postgres',
-                password: process.env.DB_PASSWORD || '123',
-                host: process.env.DB_HOST || 'localhost',
-                port: process.env.DB_PORT || 5432,
-                database: process.env.DB_NAME || 'test_nutech',
-                idleTimeoutMillis: 500
-            });
+        if (pool) {
+            console.log('Closing existing pool connections...');
+            await pool.end();
         }
 
-        // Test the database connection
+        console.log('Initializing database pool...');
+        pool = createPool();
+
+        // Test the connection
+        const client = await pool.connect();
+        try {
+            const result = await client.query('SELECT version()');
+            console.log('Database connected successfully:', result.rows[0].version);
+        } finally {
+            client.release();
+        }
+
+        // Set up event handlers
         pool.on('connect', () => {
-            console.log('Database connected successfully');
+            console.log('New client connected to database');
         });
 
         pool.on('error', (err) => {
             console.error('Unexpected error on idle client', err);
-            // Don't exit the process, try to recover
-            initializePool();
+            if (!pool._ended) {
+                console.log('Attempting to recover pool...');
+                setTimeout(initializePool, 5000);
+            }
         });
 
-        // Test query to verify connection
-        pool.query('SELECT NOW()', (err, res) => {
-            if (err) {
-                console.error('Error testing database connection:', err);
-                throw err;
-            }
-            console.log('Database connection test successful');
+        pool.on('remove', () => {
+            console.log('Client removed from pool');
         });
 
     } catch (error) {
-        console.error('Error initializing database connection:', error);
-        // Wait 5 seconds before retrying
+        console.error('Failed to initialize database pool:', error);
+        console.log('Retrying in 5 seconds...');
         setTimeout(initializePool, 5000);
     }
 };
 
 // Initialize the pool
-initializePool();
+initializePool().catch(error => {
+    console.error('Initial pool creation failed:', error);
+    process.exit(1);
+});
 
-// Add a function to check pool health
-const checkPool = async () => {
+// Check pool health and attempt recovery if needed
+const ensureConnection = async () => {
     try {
         const client = await pool.connect();
         client.release();
         return true;
     } catch (err) {
-        console.error('Error checking pool health:', err);
+        console.error('Connection check failed:', err);
+        await initializePool();
         return false;
     }
 };
 
-// Export pool and health check
+// Export the pool with a getter to ensure we always have the latest instance
 module.exports = {
-    pool,
-    checkPool
+    get pool() {
+        return pool;
+    },
+    ensureConnection
 };
